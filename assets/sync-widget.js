@@ -65,18 +65,18 @@
   }
 
   // DOM 就绪保护：内联注入可能在 body 完整前执行
-  const mountWidget = () => {
-    const root = el('div', 'dshss-root')
-    const panel = el('div', 'dshss-panel')
-    const ball = el('button', 'dshss-ball', '⇅')
-    ball.title = 'DSH 会话同步'
-    ball.setAttribute('aria-label', 'DSH 会话同步')
-    root.appendChild(panel)
-    root.appendChild(ball)
-    document.body.appendChild(root)
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountWidget, { once: true })
-  else mountWidget()
+  const root = el('div', 'dshss-root')
+  const panel = el('div', 'dshss-panel')
+  const ball = el('button', 'dshss-ball', '⇅')
+  ball.title = 'DSH 会话同步'
+  ball.setAttribute('aria-label', 'DSH 会话同步')
+  root.appendChild(panel)
+  root.appendChild(ball)
+
+  // DOM 就绪保护：内联注入可能在 body 完整前执行，只延迟挂载到 body
+  const mountToBody = () => { document.body.appendChild(root) }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountToBody, { once: true })
+  else mountToBody()
 
   const style = document.createElement('style')
   style.textContent = CSS
