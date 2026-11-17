@@ -1,0 +1,35 @@
+{
+  "name": "dsh-session-handoff",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Move native DSH v4 sessions between machines through git (export/import tools + CLI)",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "session",
+    "handoff",
+    "git"
+  ],
+  "main": "lib/index.js",
+  "bin": {
+    "dsh-session-handoff": "bin/dsh-session-handoff.mjs"
+  },
+  "files": [
+    "lib",
+    "bin",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "engines": {
+    "node": ">=22.15"
+  },
+  "license": "MIT"
+}
