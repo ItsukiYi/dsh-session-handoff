@@ -8,9 +8,6 @@
 ;(function () {
   'use strict'
   // 诊断：确认本文件被页面加载执行
-  try { console.error('[session-sync] widget.js EXECUTED') } catch {}
-  try { document.documentElement.setAttribute('data-dshss-loaded', '1') } catch {}
-  try { fetch('/dsh-session-handoff/widget-loaded').catch(() => {}) } catch {}
   if (window.__dshSessionSyncLoaded) return
   window.__dshSessionSyncLoaded = true
 
@@ -67,14 +64,19 @@
     return node
   }
 
-  const root = el('div', 'dshss-root')
-  const panel = el('div', 'dshss-panel')
-  const ball = el('button', 'dshss-ball', '⇅')
-  ball.title = 'DSH 会话同步'
-  ball.setAttribute('aria-label', 'DSH 会话同步')
-  root.appendChild(panel)
-  root.appendChild(ball)
-  document.body.appendChild(root)
+  // DOM 就绪保护：内联注入可能在 body 完整前执行
+  const mountWidget = () => {
+    const root = el('div', 'dshss-root')
+    const panel = el('div', 'dshss-panel')
+    const ball = el('button', 'dshss-ball', '⇅')
+    ball.title = 'DSH 会话同步'
+    ball.setAttribute('aria-label', 'DSH 会话同步')
+    root.appendChild(panel)
+    root.appendChild(ball)
+    document.body.appendChild(root)
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountWidget, { once: true })
+  else mountWidget()
 
   const style = document.createElement('style')
   style.textContent = CSS
