@@ -7,6 +7,10 @@
  */
 ;(function () {
   'use strict'
+  // 诊断：确认本文件被页面加载执行
+  try { console.error('[session-sync] widget.js EXECUTED') } catch {}
+  try { document.documentElement.setAttribute('data-dshss-loaded', '1') } catch {}
+  try { fetch('/dsh-session-handoff/widget-loaded').catch(() => {}) } catch {}
   if (window.__dshSessionSyncLoaded) return
   window.__dshSessionSyncLoaded = true
 
