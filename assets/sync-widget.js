@@ -20,7 +20,7 @@
     config: null,
     error: null,
     lastAction: null, // { kind: 'push'|'pull'|'update', ok, summary, at }
-    sel: { push: null, pull: null, delete: null }, // Set<string> | null（null = 全部选中）
+    sel: { push: null, pull: null, delete: null, restore: null }, // Set<string> | null（null = 全部选中）
   }
 
   // ---------- 样式 ----------
@@ -170,15 +170,21 @@
 
   function deleteItems(st) { return Array.isArray(st?.deletions) ? st.deletions : [] }
 
+  function restoreItems(st) { return Array.isArray(st?.restorable) ? st.restorable : [] }
+
   /** 状态刷新后校正选择集：保留仍存在的勾选，新出现的默认勾选。 */
   function syncSelection() {
     const st = STATE.status
-    const groups = { push: pushItems(st).map((i) => i.id), pull: pullItems(st).map((i) => i.id), delete: deleteItems(st).map((i) => i.id) }
+    const groups = { push: pushItems(st).map((i) => i.id), pull: pullItems(st).map((i) => i.id), delete: deleteItems(st).map((i) => i.id), restore: restoreItems(st).map((i) => i.id) }
     const deleteDefault = new Set(deleteItems(st).filter((i) => !i.remoteOnly).map((i) => i.id))
-    for (const key of ['push', 'pull', 'delete']) {
+    for (const key of ['push', 'pull', 'delete', 'restore']) {
       const prev = STATE.sel[key]
       const ids = groups[key]
-      if (prev === null || prev === undefined) { STATE.sel[key] = key === 'delete' ? new Set(deleteDefault) : new Set(ids); continue }
+      if (prev === null || prev === undefined) {
+        if (key === 'delete') { STATE.sel[key] = new Set(deleteDefault); continue }
+        if (key === 'restore') { STATE.sel[key] = new Set(); continue }
+        STATE.sel[key] = new Set(ids); continue
+      }
       const next = new Set()
       for (const id of ids) if (prev.has(id)) next.add(id)
       for (const id of ids) if (!prev.has(id)) next.add(id)
@@ -195,9 +201,11 @@
   async function doPush() {
     const items = pushItems(STATE.status)
     const delItems = deleteItems(STATE.status)
+    const restItems = restoreItems(STATE.status)
     const ids = selectedIds('push', items)
     const deleteIds = selectedIds('delete', delItems)
-    if (items.length > 0 && ids.length === 0 && deleteIds.length === 0) { STATE.error = '没有勾选要推送或删除的会话'; render(); return }
+    const restoreIds = selectedIds('restore', restItems)
+    if (ids.length === 0 && deleteIds.length === 0 && restoreIds.length === 0) { STATE.error = '没有勾选要推送、删除或恢复的会话'; render(); return }
     STATE.loading = true
     STATE.error = null
     render()
@@ -205,6 +213,7 @@
       const payload = {}
       if (items.length > 0) payload.selected = ids
       if (deleteIds.length > 0) payload.deleteIds = deleteIds
+      if (restoreIds.length > 0) payload.restoreIds = restoreIds
       const result = await api('/push', payload)
       STATE.lastAction = { kind: 'push', ok: result.ok === true, summary: summarize(result), at: new Date() }
       if (result.ok === false) STATE.error = result.error ?? 'push failed'
@@ -214,6 +223,7 @@
       STATE.loading = false
       STATE.sel.push = null
       STATE.sel.delete = null
+      STATE.sel.restore = null
       render()
       refresh()
     }
@@ -417,6 +427,10 @@
       return { tagClass: 'fork', tagText: tagText, meta: shortId(item.id) + ' · 远端 ' + item.events + ' 事件 · ' + tail }
     })
 
+    renderList('restore', '云端已删除 · 本机仍有', restoreItems(st), (item) => {
+      return { tagClass: 'over', tagText: '可恢复', meta: shortId(item.id) + ' · ' + item.events + ' 事件 · 勾选后推送会重新上传' }
+    })
+
     const emptyList = Array.isArray(st.push?.empty) ? st.push.empty : []
     if (emptyList.length > 0) {
       const hint = el('div', 'dshss-hint', '空会话不计入推送：' + emptyList.length + ' 个（无对话内容）')
@@ -430,12 +444,16 @@
     const actions = el('div', 'dshss-actions')
     const delAll = deleteItems(st)
     const delIds = selectedIds('delete', delAll)
+    const restAll = restoreItems(st)
+    const restIds = selectedIds('restore', restAll)
     const pushParts = []
     if (pushIds.length > 0) pushParts.push(pushIds.length + ' 推')
     if (delIds.length > 0) pushParts.push(delIds.length + ' 删')
+    if (restIds.length > 0) pushParts.push(restIds.length + ' 恢复')
     const pushLabel = '↑ 推送' + (pushParts.length > 0 ? ' (' + pushParts.join(' / ') + ')' : '')
     const pushBtn = el('button', 'dshss-btn', pushLabel)
-    pushBtn.disabled = STATE.loading || STATE.updating || (pushAll.length > 0 && pushIds.length === 0 && delIds.length === 0)
+    const nothingSelected = pushIds.length === 0 && delIds.length === 0 && restIds.length === 0
+    pushBtn.disabled = STATE.loading || STATE.updating || (nothingSelected && (pushAll.length > 0 || delAll.length > 0 || restAll.length > 0))
     pushBtn.onclick = doPush
     const pullLabel = '↓ 拉取' + (pullAll.length > 1 || pullIds.length !== pullAll.length ? ' (' + pullIds.length + ')' : '')
     const pullBtn = el('button', 'dshss-btn dshss-secondary', pullLabel)
