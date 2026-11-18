@@ -8,6 +8,35 @@
   导入时通过宿主 API 直接 `attachSession`，**不需要重启 DSH**；
 - **CLI**（无插件时可用）：直接读写会话文件与 `storages/workspace.json`，改完要重启 DSH。
 
+## 一键安装（推荐）
+
+### 方式 0a：一条命令（需要能访问 GitHub）
+
+在另一台电脑的 PowerShell 里执行：
+
+```powershell
+irm https://raw.githubusercontent.com/ItsukiYi/dsh-session-handoff/main/install.ps1 | iex
+```
+
+脚本会自动：找 DSH 数据目录和 `dsh.cmd` → 下载插件到 `%LOCALAPPDATA%\dsh-plugins\dsh-session-handoff` → 用 CLI 方式装进 desktop profile → 写进 `dsh.profile.bundles`。
+
+完成后**完全退出 DSH**（含托盘/后台进程）再启动。
+
+### 方式 0b：拷文件夹双击装（不依赖 GitHub，最稳）
+
+1. 把整个 `dsh-session-handoff` 文件夹拷到那台电脑（如 `D:\dsh-plugins\dsh-session-handoff`）
+2. 双击 `install.cmd`（会自动用所在目录安装）
+3. 完全退出 DSH 再启动
+
+> 若找不到 DSH 或数据目录，手动指定：
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File install.ps1 -DshCmd "D:\deepseek-harness-desktop\resources\runtime\cli\bin\dsh.cmd" -DshHome "C:\Users\你\.dsh"
+> ```
+
+> **为什么不用 DSH 插件页（GUI）装？** 插件页靠"安装前后 dependencies 差异"判断装了哪个包，差异不为 1 时直接报"无法从依赖变更中确定安装了哪一个包"。上面的脚本用 CLI（直接转发 pnpm）绕开这套检测。
+
+---
+
 ## 在其他电脑上安装
 
 三种方式，按有没有 GitHub 选。
