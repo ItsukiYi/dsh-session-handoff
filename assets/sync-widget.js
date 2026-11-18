@@ -174,10 +174,11 @@
   function syncSelection() {
     const st = STATE.status
     const groups = { push: pushItems(st).map((i) => i.id), pull: pullItems(st).map((i) => i.id), delete: deleteItems(st).map((i) => i.id) }
+    const deleteDefault = new Set(deleteItems(st).filter((i) => !i.remoteOnly).map((i) => i.id))
     for (const key of ['push', 'pull', 'delete']) {
       const prev = STATE.sel[key]
       const ids = groups[key]
-      if (prev === null || prev === undefined) { STATE.sel[key] = new Set(ids); continue }
+      if (prev === null || prev === undefined) { STATE.sel[key] = key === 'delete' ? new Set(deleteDefault) : new Set(ids); continue }
       const next = new Set()
       for (const id of ids) if (prev.has(id)) next.add(id)
       for (const id of ids) if (!prev.has(id)) next.add(id)
@@ -401,8 +402,9 @@
     })
 
     renderList('delete', '待删除', deleteItems(st), (item) => {
-      const tagText = item.archived ? '已归档' : '本地已删'
-      return { tagClass: 'fork', tagText: tagText, meta: shortId(item.id) + ' · 远端 ' + item.events + ' 事件 · 推送时移除远端副本' }
+      const tagText = item.remoteOnly ? '仅远端' : item.archived ? '已归档' : '本地已删'
+      const tail = item.remoteOnly ? '本机无此会话，勾选后移除远端副本' : '推送时移除远端副本'
+      return { tagClass: 'fork', tagText: tagText, meta: shortId(item.id) + ' · 远端 ' + item.events + ' 事件 · ' + tail }
     })
 
     const emptyList = Array.isArray(st.push?.empty) ? st.push.empty : []
