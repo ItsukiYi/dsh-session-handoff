@@ -17,6 +17,9 @@
 - **git HEAD**：显示提交 + 分支 + 该提交的时间与提交者，用来判断最后同步来自哪台机器。
 - **待推送/待拉取列表**：显示会话标题（无标题回退短 id）、事件数与变更类型（新/覆盖/分叉），每条带复选框，支持"全选"；按钮显示选中数量。
 
+- **待删除（删除传播）**：本地删除/归档的会话会进入"待删除"，勾选后推送会从远端移除对应 bundle，并在仓库写入墓碑（`deleted/<id>.json`），其它机器不会再把已删除的会话推回来。
+- **空会话不推送**：只有权限/沙箱样板事件、没有任何对话的会话不计入推送，避免云端堆积垃圾。
+
 ## 一键安装（推荐）
 
 ### 方式 0a：一条命令（需要能访问 GitHub）
@@ -90,13 +93,13 @@ DSH 会把 profile 的 `package.json` 依赖和 `dsh.profile.bundles` 一起写�
 
 ```powershell
 cd D:\CyberAlbum\dsh-session-handoff
-npm pack   # 产出 dsh-session-handoff-0.3.0.tgz（14 KB）
+npm pack   # 产出 dsh-session-handoff-0.4.0.tgz（14 KB）
 ```
 
 把 tgz 拷到另一台电脑，然后：
 
 ```powershell
-& ...\dsh.cmd plugin --profile desktop add file:D:\path\dsh-session-handoff-0.3.0.tgz
+& ...\dsh.cmd plugin --profile desktop add file:D:\path\dsh-session-handoff-0.4.0.tgz
 ```
 
 ### 本机安装（开发时）

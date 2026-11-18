@@ -20,7 +20,7 @@
     config: null,
     error: null,
     lastAction: null, // { kind: 'push'|'pull'|'update', ok, summary, at }
-    sel: { push: null, pull: null }, // Set<string> | null（null = 全部选中）
+    sel: { push: null, pull: null, delete: null }, // Set<string> | null（null = 全部选中）
   }
 
   // ---------- 样式 ----------
@@ -168,11 +168,13 @@
     return out
   }
 
+  function deleteItems(st) { return Array.isArray(st?.deletions) ? st.deletions : [] }
+
   /** 状态刷新后校正选择集：保留仍存在的勾选，新出现的默认勾选。 */
   function syncSelection() {
     const st = STATE.status
-    const groups = { push: pushItems(st).map((i) => i.id), pull: pullItems(st).map((i) => i.id) }
-    for (const key of ['push', 'pull']) {
+    const groups = { push: pushItems(st).map((i) => i.id), pull: pullItems(st).map((i) => i.id), delete: deleteItems(st).map((i) => i.id) }
+    for (const key of ['push', 'pull', 'delete']) {
       const prev = STATE.sel[key]
       const ids = groups[key]
       if (prev === null || prev === undefined) { STATE.sel[key] = new Set(ids); continue }
@@ -191,13 +193,18 @@
 
   async function doPush() {
     const items = pushItems(STATE.status)
+    const delItems = deleteItems(STATE.status)
     const ids = selectedIds('push', items)
-    if (items.length > 0 && ids.length === 0) { STATE.error = '没有勾选要推送的会话'; render(); return }
+    const deleteIds = selectedIds('delete', delItems)
+    if (items.length > 0 && ids.length === 0 && deleteIds.length === 0) { STATE.error = '没有勾选要推送或删除的会话'; render(); return }
     STATE.loading = true
     STATE.error = null
     render()
     try {
-      const result = await api('/push', items.length > 0 ? { selected: ids } : {})
+      const payload = {}
+      if (items.length > 0) payload.selected = ids
+      if (deleteIds.length > 0) payload.deleteIds = deleteIds
+      const result = await api('/push', payload)
       STATE.lastAction = { kind: 'push', ok: result.ok === true, summary: summarize(result), at: new Date() }
       if (result.ok === false) STATE.error = result.error ?? 'push failed'
     } catch (error) {
@@ -205,6 +212,7 @@
     } finally {
       STATE.loading = false
       STATE.sel.push = null
+      STATE.sel.delete = null
       render()
       refresh()
     }
@@ -272,6 +280,7 @@
     if (Array.isArray(result.overwritten) && result.overwritten.length) parts.push(result.overwritten.length + ' 覆盖')
     if (Array.isArray(result.forked) && result.forked.length) parts.push(result.forked.length + ' 分叉')
     if (Array.isArray(result.forkBundles) && result.forkBundles.length) parts.push(result.forkBundles.length + ' fork bundle')
+    if (result.deleted && Array.isArray(result.deleted.removed) && result.deleted.removed.length) parts.push(result.deleted.removed.length + ' 删除')
     if (result.ok === false && result.error) return String(result.error).slice(0, 160)
     return parts.length > 0 ? parts.join('，') : '无变化'
   }
@@ -358,6 +367,7 @@
     addCell(st.remoteBundles, '远端 bundle')
     addCell(st.toPush, '待推送', (st.toPush ?? 0) > 0 ? 'warn' : 'ok')
     addCell(st.toPull, '待拉取', (st.toPull ?? 0) > 0 ? 'warn' : 'ok')
+    if ((st.toDelete ?? 0) > 0) addCell(st.toDelete, '待删除', 'warn')
     panel.appendChild(grid)
 
     const repo = st.repo ?? {}
@@ -375,7 +385,8 @@
     renderList('push', '待推送', pushItems(st), (item) => {
       const reason = item.reason
       const tagClass = reason === 'fork' ? 'fork' : reason === 'new' ? 'new' : 'ahead'
-      const tagText = reason === 'fork' ? '分叉' : reason === 'new' ? '新' : '+' + item.events
+      const delta = typeof item.newEvents === 'number' ? item.newEvents : null
+      const tagText = reason === 'fork' ? '分叉' : reason === 'new' ? '新' : (delta !== null ? '本地 +' + delta : '本地更新')
       return { tagClass: tagClass, tagText: tagText, meta: shortId(item.id) + ' · ' + item.events + ' 事件' }
     })
 
@@ -389,14 +400,30 @@
       return { tagClass: tagClass, tagText: tagText, meta: meta }
     })
 
+    renderList('delete', '待删除', deleteItems(st), (item) => {
+      const tagText = item.archived ? '已归档' : '本地已删'
+      return { tagClass: 'fork', tagText: tagText, meta: shortId(item.id) + ' · 远端 ' + item.events + ' 事件 · 推送时移除远端副本' }
+    })
+
+    const emptyList = Array.isArray(st.push?.empty) ? st.push.empty : []
+    if (emptyList.length > 0) {
+      const hint = el('div', 'dshss-hint', '空会话不计入推送：' + emptyList.length + ' 个（无对话内容）')
+      panel.appendChild(hint)
+    }
+
     const pushAll = pushItems(st)
     const pullAll = pullItems(st)
     const pushIds = selectedIds('push', pushAll)
     const pullIds = selectedIds('pull', pullAll)
     const actions = el('div', 'dshss-actions')
-    const pushLabel = '↑ 推送' + (pushAll.length > 1 || pushIds.length !== pushAll.length ? ' (' + pushIds.length + ')' : '')
+    const delAll = deleteItems(st)
+    const delIds = selectedIds('delete', delAll)
+    const pushParts = []
+    if (pushIds.length > 0) pushParts.push(pushIds.length + ' 推')
+    if (delIds.length > 0) pushParts.push(delIds.length + ' 删')
+    const pushLabel = '↑ 推送' + (pushParts.length > 0 ? ' (' + pushParts.join(' / ') + ')' : '')
     const pushBtn = el('button', 'dshss-btn', pushLabel)
-    pushBtn.disabled = STATE.loading || STATE.updating || (pushAll.length > 0 && pushIds.length === 0)
+    pushBtn.disabled = STATE.loading || STATE.updating || (pushAll.length > 0 && pushIds.length === 0 && delIds.length === 0)
     pushBtn.onclick = doPush
     const pullLabel = '↓ 拉取' + (pullAll.length > 1 || pullIds.length !== pullAll.length ? ' (' + pullIds.length + ')' : '')
     const pullBtn = el('button', 'dshss-btn dshss-secondary', pullLabel)
