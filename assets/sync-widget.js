@@ -371,6 +371,15 @@
     if ((st.toDelete ?? 0) > 0) addCell(st.toDelete, '待删除', 'warn')
     panel.appendChild(grid)
 
+    const bd = st.localBreakdown
+    if (bd && (bd.archived > 0 || bd.deleted > 0 || bd.empty > 0)) {
+      const bits = []
+      if (bd.archived > 0) bits.push('已归档 ' + bd.archived)
+      if (bd.deleted > 0) bits.push('远端已删 ' + bd.deleted)
+      if (bd.empty > 0) bits.push('空会话 ' + bd.empty)
+      panel.appendChild(el('div', 'dshss-hint', '不计入本地会话：' + bits.join(' · ')))
+    }
+
     const repo = st.repo ?? {}
     if (repo.head) {
       const bits = ['HEAD ' + repo.head]
@@ -388,7 +397,8 @@
       const tagClass = reason === 'fork' ? 'fork' : reason === 'new' ? 'new' : 'ahead'
       const delta = typeof item.newEvents === 'number' ? item.newEvents : null
       const tagText = reason === 'fork' ? '分叉' : reason === 'new' ? '新' : (delta !== null ? '本地 +' + delta : '本地更新')
-      return { tagClass: tagClass, tagText: tagText, meta: shortId(item.id) + ' · ' + item.events + ' 事件' }
+      const meta = shortId(item.id) + ' · ' + item.events + ' 事件' + (item.duplicate ? ' · ⚠ 疑似重复副本' : '')
+      return { tagClass: tagClass, tagText: tagText, meta: meta }
     })
 
     renderList('pull', '待拉取', pullItems(st), (item) => {
