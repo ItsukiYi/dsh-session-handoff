@@ -8,6 +8,15 @@
   导入时通过宿主 API 直接 `attachSession`，**不需要重启 DSH**；
 - **CLI**（无插件时可用）：直接读写会话文件与 `storages/workspace.json`，改完要重启 DSH。
 
+## 面板功能
+
+- **版本号**：标题旁显示当前插件版本（如 `v0.3.0`）。
+- **⟳ 更新**：点击即在插件自身仓库执行 `git pull --ff-only`，显示版本变化；有更新时提示重启 DSH 生效。
+- **矩阵块**：本地会话 / 远端 bundle / 待推送 / 待拉取 四格压缩显示，有积压时数字变黄。
+- **完整路径**：工作区与远端 URL 完整换行显示（可点选复制），不再截断。
+- **git HEAD**：显示提交 + 分支 + 该提交的时间与提交者，用来判断最后同步来自哪台机器。
+- **待推送/待拉取列表**：显示会话标题（无标题回退短 id）、事件数与变更类型（新/覆盖/分叉），每条带复选框，支持"全选"；按钮显示选中数量。
+
 ## 一键安装（推荐）
 
 ### 方式 0a：一条命令（需要能访问 GitHub）
@@ -81,13 +90,13 @@ DSH 会把 profile 的 `package.json` 依赖和 `dsh.profile.bundles` 一起写�
 
 ```powershell
 cd D:\CyberAlbum\dsh-session-handoff
-npm pack   # 产出 dsh-session-handoff-0.2.0.tgz（14 KB）
+npm pack   # 产出 dsh-session-handoff-0.3.0.tgz（14 KB）
 ```
 
 把 tgz 拷到另一台电脑，然后：
 
 ```powershell
-& ...\dsh.cmd plugin --profile desktop add file:D:\path\dsh-session-handoff-0.2.0.tgz
+& ...\dsh.cmd plugin --profile desktop add file:D:\path\dsh-session-handoff-0.3.0.tgz
 ```
 
 ### 本机安装（开发时）
