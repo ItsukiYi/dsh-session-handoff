@@ -1,6 +1,6 @@
 {
   "name": "dsh-session-handoff",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "type": "module",
   "description": "Move native DSH v4 sessions between machines through git (export/import tools + CLI)",
