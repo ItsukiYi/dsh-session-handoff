@@ -250,6 +250,30 @@
     }
   }
 
+  async function doLocalDelete(ids) {
+    STATE.loading = true
+    STATE.error = null
+    render()
+    try {
+      const result = await api('/local-delete', { ids })
+      const okCount = Array.isArray(result.archived) ? result.archived.length : 0
+      const errCount = Array.isArray(result.errors) ? result.errors.length : 0
+      STATE.lastAction = {
+        kind: 'deleteLocal',
+        ok: errCount === 0,
+        summary: okCount + ' 本机已删除' + (errCount > 0 ? '，' + errCount + ' 失败：' + (result.errors[0]?.error ?? '').slice(0, 90) : ''),
+        at: new Date(),
+      }
+    } catch (error) {
+      STATE.lastAction = { kind: 'deleteLocal', ok: false, summary: String(error?.message ?? error).slice(0, 160), at: new Date() }
+    } finally {
+      STATE.loading = false
+      STATE.sel.restore = null
+      render()
+      refresh()
+    }
+  }
+
   async function doUpdate() {
     STATE.updating = true
     STATE.error = null
@@ -460,12 +484,20 @@
     pullBtn.disabled = STATE.loading || STATE.updating || (pullAll.length > 0 && pullIds.length === 0)
     pullBtn.onclick = doPull
     actions.appendChild(pushBtn)
+    if (restAll.length > 0) {
+      const label = '🗑 本机删除' + (restIds.length > 0 ? ' (' + restIds.length + ')' : '')
+      const delLocalBtn = el('button', 'dshss-btn dshss-secondary', label)
+      delLocalBtn.title = '把这些会话在 DSH 里归档（隐藏），不再与本机同步；不删云端'
+      delLocalBtn.disabled = STATE.loading || STATE.updating || restIds.length === 0
+      delLocalBtn.onclick = () => doLocalDelete(restIds)
+      actions.appendChild(delLocalBtn)
+    }
     actions.appendChild(pullBtn)
     panel.appendChild(actions)
 
     if (STATE.lastAction) {
       const la = STATE.lastAction
-      const kindText = la.kind === 'push' ? '推送' : la.kind === 'pull' ? '拉取' : '更新'
+      const kindText = la.kind === 'push' ? '推送' : la.kind === 'pull' ? '拉取' : la.kind === 'deleteLocal' ? '本机删除' : '更新'
       const tone = la.ok ? (la.kind === 'update' ? 'dshss-good' : 'dshss-info') : 'dshss-err'
       const when = fmtClock(la.at)
       panel.appendChild(el('div', 'dshss-msg ' + tone,
