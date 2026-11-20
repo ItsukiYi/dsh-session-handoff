@@ -455,6 +455,11 @@
       return { tagClass: 'over', tagText: '可恢复', meta: shortId(item.id) + ' · ' + item.events + ' 事件 · 勾选后推送会重新上传' }
     })
 
+    const forkedNow = Array.isArray(st.push?.forked) ? st.push.forked : []
+    if (forkedNow.length > 0) {
+      panel.appendChild(el('div', 'dshss-hint', '分叉 ' + forkedNow.length + ' 个：推送保留本机版本；另一台拉取时会把远端版本存成副本，两端都不丢内容'))
+    }
+
     const emptyList = Array.isArray(st.push?.empty) ? st.push.empty : []
     if (emptyList.length > 0) {
       const hint = el('div', 'dshss-hint', '空会话不计入推送：' + emptyList.length + ' 个（无对话内容）')
